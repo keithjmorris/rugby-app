@@ -2,15 +2,61 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Rugby</title>
+  <meta name="theme-color" content="#123d2c">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <main class="placeholder">
-    <h1>Rugby</h1>
-    <p>The dashboard is being built. The data connection can be tested now.</p>
-    <p><a href="explorer.html">Open the data explorer →</a></p>
-  </main>
+  <header class="masthead">
+    <div class="masthead-inner">
+      <div class="brand">
+        <span class="brand-ball" aria-hidden="true"></span>
+        <div>
+          <h1>Rugby</h1>
+          <p class="brand-sub" id="updated">Loading…</p>
+        </div>
+      </div>
+      <button type="button" class="pick-btn" id="pickBtn">My clubs</button>
+    </div>
+    <nav class="tabs" role="tablist">
+      <button type="button" role="tab" data-tab="live">Live</button>
+      <button type="button" role="tab" data-tab="fixtures">Fixtures</button>
+      <button type="button" role="tab" data-tab="results">Results</button>
+      <button type="button" role="tab" data-tab="tables">Tables</button>
+    </nav>
+  </header>
+
+  <div class="filters" id="filters">
+    <div class="chips" id="chips"></div>
+    <input type="search" id="search" class="search" placeholder="Search teams or competitions" autocomplete="off">
+  </div>
+
+  <main class="content" id="content"></main>
+
+  <!-- Match detail -->
+  <div class="overlay" id="matchOverlay" hidden>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="matchTitle">
+      <button type="button" class="sheet-close" data-close aria-label="Close">×</button>
+      <div id="matchBody"></div>
+    </div>
+  </div>
+
+  <!-- Club picker -->
+  <div class="overlay" id="pickOverlay" hidden>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="pickTitle">
+      <button type="button" class="sheet-close" data-close aria-label="Close">×</button>
+      <h2 id="pickTitle" class="sheet-title">Follow Premiership clubs</h2>
+      <p class="sheet-note">England are always followed. Your choice is saved on this device only.</p>
+      <div class="pick-grid" id="pickGrid"></div>
+      <button type="button" class="primary-btn" data-close>Done</button>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>

@@ -40,10 +40,18 @@ const MIN = 60;
 const HOUR = 60 * MIN;
 const DAY = 24 * HOUR;
 
+// How often live scores refresh. Vercel setting LIVE_CACHE_SECONDS:
+// 300 (5 minutes) suits the 100-requests-a-day BASIC plan; set 20 after the upgrade.
+function liveSeconds() {
+  const n = parseInt(process.env.LIVE_CACHE_SECONDS, 10);
+  return Number.isFinite(n) ? Math.min(Math.max(n, 15), 900) : 300;
+}
+
 // How long one real API call may be shared by every family member.
 function matchesCacheSeconds(matches) {
-  if (!matches.length) return 5 * MIN;
+  if (!matches.length) return 30 * MIN;
   const now = Date.now();
+  const live = liveSeconds();
   let seconds = 7 * DAY;
 
   for (const m of matches) {
@@ -51,17 +59,17 @@ function matchesCacheSeconds(matches) {
     const kickoff = Date.parse(m && m.date);
     const hoursSinceKickoff = Number.isFinite(kickoff) ? (now - kickoff) / HOUR / 1000 : NaN;
 
-    if (LIVE.has(desc)) return 20; // anything live → refresh fast
+    if (LIVE.has(desc)) return live; // anything live → refresh fast
 
     if (!desc || NOT_YET_PLAYED.has(desc)) {
-      if (!Number.isFinite(hoursSinceKickoff)) seconds = Math.min(seconds, 10 * MIN);
+      if (!Number.isFinite(hoursSinceKickoff)) seconds = Math.min(seconds, 30 * MIN);
       // Kicks off within 3 hours, or should have started and hasn't updated yet.
-      else if (hoursSinceKickoff > -3 && hoursSinceKickoff < 12) return 20;
-      else if (hoursSinceKickoff > -24) seconds = Math.min(seconds, 10 * MIN);
-      else seconds = Math.min(seconds, HOUR);
+      else if (hoursSinceKickoff > -3 && hoursSinceKickoff < 12) return live;
+      else if (hoursSinceKickoff > -24) seconds = Math.min(seconds, 30 * MIN);
+      else seconds = Math.min(seconds, 3 * HOUR);
     } else if (!Number.isFinite(hoursSinceKickoff) || hoursSinceKickoff < 36) {
       // Recently finished: scores and statuses can still be corrected.
-      seconds = Math.min(seconds, 10 * MIN);
+      seconds = Math.min(seconds, 30 * MIN);
     }
   }
   return seconds;
@@ -87,7 +95,7 @@ function cacheSecondsFor(root, segments, body) {
 }
 
 function setCache(res, seconds) {
-  const swr = seconds <= 60 ? 10 : seconds;
+  const swr = seconds <= 900 ? 10 : seconds;
   res.setHeader('Cache-Control', `public, max-age=0, s-maxage=${seconds}, stale-while-revalidate=${swr}`);
   res.setHeader('X-Rugby-Cache-Seconds', String(seconds));
 }

@@ -44,7 +44,28 @@ Ignore these duplicates: "Premiership Rugby" 5039 (labelled Austria, up to 2024)
 - Premier 15s Women / Premiership Women's Rugby has no 2026 season.
 - Three leagues named "Premiership Rugby".
 
-## Still to confirm
-- Season numbering: is the northern-hemisphere 2026/27 season "2026" or "2027"?
-- Real shapes of /matches/{id} and /standings.
-- How far ahead fixtures are held.
+## Confirmed from /matches?leagueId=11847&season=2026 (18 Oct 2026)
+- Season numbering: "2026" = the 2026/27 season (round 1 was 25–27 Sep 2026).
+- List comes back newest first. Up to 100 per call; the Premiership season so far is 25 matches.
+- Fixtures held only to 31 Oct 2026 (round 5), about 2 weeks ahead.
+- `state.score` is a "home - away" string, e.g. "28 - 24"; null before kick-off.
+- `week` is a string ("5"). `date` is UTC ISO; show in Europe/London.
+- Team names are plain: "Bristol", "Northampton Saints", "Newcastle Red Bulls".
+- Some teams have `logo: null` (Newcastle Red Bulls, 789661), so a fallback badge is needed.
+- No bonus points or tries in the list. Losing bonus could be worked out from scores; try bonus could not.
+
+## Confirmed from /matches/46844079 (Leicester v Gloucester, Premiership)
+- Returns an ARRAY holding one match object, not a bare object.
+- venue, referee and forecast are all fields of nulls; `lineups` is null. No events, no stats.
+- `predictions.prematch` holds about 20 near-identical snapshots; use the last (latest generatedAt).
+  Probabilities are strings like "71.44%".
+
+## Confirmed from /standings?leagueId=11847&season=2026
+- `groups[0].name` = "English Premiership 26/27" (useful as a heading).
+- Rows: team{id,logo,name}, position, gamesPlayed, wins, draws, loses, scoredPoints, receivedPoints, points.
+- `points` INCLUDES bonus points. Bonus total = points − 4×wins − 2×draws.
+  Cross-checked against all 15 results: P/W/D/L/PF/PA match exactly, and
+  losing bonus (lost by ≤7, worked out from scores) ≤ bonus total for every team,
+  so try bonus = total − losing bonus.
+- Different competitions use different bonus rules (e.g. Top 14 losing bonus is ≤5),
+  so split TB/LB only where the rule is known; the BP total works anywhere wins = 4, draws = 2.
