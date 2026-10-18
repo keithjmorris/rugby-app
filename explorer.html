@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rugby Data Explorer</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="explorer">
+  <header class="ex-header">
+    <h1>Rugby data explorer</h1>
+    <p>Fetches raw JSON through our own <code>/api/rugby</code> proxy. Use <b>Download</b> to save a response as a file and attach it in the chat.</p>
+  </header>
+
+  <section class="ex-card">
+    <h2>Quick checks</h2>
+    <div class="ex-quick" id="quick"></div>
+  </section>
+
+  <section class="ex-card">
+    <h2>Custom request</h2>
+    <form id="form" class="ex-form">
+      <label>Path
+        <input id="path" value="/leagues" autocomplete="off" spellcheck="false">
+      </label>
+      <label>Parameters <small>(one per line, name=value)</small>
+        <textarea id="params" rows="4" spellcheck="false">leagueName=Premiership</textarea>
+      </label>
+      <button type="submit">Fetch</button>
+    </form>
+  </section>
+
+  <section class="ex-card">
+    <div class="ex-result-head">
+      <h2>Response</h2>
+      <div class="ex-actions">
+        <button type="button" id="copy" disabled>Copy</button>
+        <button type="button" id="download" disabled>Download</button>
+      </div>
+    </div>
+    <p id="meta" class="ex-meta">Nothing fetched yet.</p>
+    <p id="link" class="ex-meta"></p>
+    <pre id="out" class="ex-out"></pre>
+  </section>
+
+  <script>
+    const londonDate = (offsetDays = 0) => {
+      const d = new Date(Date.now() + offsetDays * 86400000);
+      return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London' }).format(d);
+    };
+
+    const QUICK = [
+      ['Leagues: Premiership', '/leagues', { leagueName: 'Premiership' }],
+      ['Leagues: Six Nations', '/leagues', { leagueName: 'Six Nations' }],
+      ['Leagues: United Rugby Championship', '/leagues', { leagueName: 'United Rugby Championship' }],
+      ['Leagues: Champions Cup', '/leagues', { leagueName: 'Champions Cup' }],
+      ['Leagues: World Cup', '/leagues', { leagueName: 'World Cup' }],
+      ['Leagues: all (first 100)', '/leagues', {}],
+      ['Matches: today', '/matches', { date: londonDate(0), timezone: 'Europe/London' }],
+      ['Matches: yesterday', '/matches', { date: londonDate(-1), timezone: 'Europe/London' }],
+      ['Matches: next Saturday', '/matches', { date: nextSaturday(), timezone: 'Europe/London' }],
+      ['Teams named England', '/teams', { name: 'England' }],
+      ['Highlights: yesterday', '/highlights', { date: londonDate(-1), timezone: 'Europe/London' }],
+    ];
+
+    function nextSaturday() {
+      for (let i = 1; i <= 7; i++) {
+        const s = londonDate(i);
+        if (new Date(s + 'T12:00:00Z').getUTCDay() === 6) return s;
+      }
+      return londonDate(0);
+    }
+
+    const $ = id => document.getElementById(id);
+    let lastText = '';
+    let lastName = 'rugby.json';
+
+    function buildUrl(path, params) {
+      const q = new URLSearchParams({ path, ...params });
+      return '/api/rugby?' + q.toString();
+    }
+
+    async function run(path, params) {
+      const url = buildUrl(path, params);
+      $('meta').textContent = 'Loading…';
+      $('link').innerHTML = '';
+      $('out').textContent = '';
+      $('copy').disabled = $('download').disabled = true;
+      const started = performance.now();
+      try {
+        const res = await fetch(url);
+        const text = await res.text();
+        let pretty = text;
+        try { pretty = JSON.stringify(JSON.parse(text), null, 2); } catch {}
+        lastText = pretty;
+        lastName = 'rugby' + path.replace(/\//g, '-') + '-' +
+          Object.values(params).join('-').replace(/[^A-Za-z0-9-]+/g, '_').slice(0, 60) + '.json';
+        const ms = Math.round(performance.now() - started);
+        const cache = res.headers.get('X-Rugby-Cache-Seconds');
+        $('meta').textContent = `HTTP ${res.status} · ${(text.length / 1024).toFixed(1)} KB · ${ms} ms` +
+          (cache ? ` · shared cache ${cache}s` : '');
+        $('meta').className = 'ex-meta ' + (res.ok ? 'ok' : 'bad');
+        const a = document.createElement('a');
+        a.href = url; a.target = '_blank'; a.rel = 'noopener';
+        a.textContent = location.origin + url;
+        $('link').append('URL: ', a);
+        $('out').textContent = pretty.length > 400000
+          ? pretty.slice(0, 400000) + '\n\n… (truncated on screen — Download has the full response)'
+          : pretty;
+        $('copy').disabled = $('download').disabled = false;
+      } catch (err) {
+        $('meta').textContent = 'Request failed: ' + err.message;
+        $('meta').className = 'ex-meta bad';
+      }
+    }
+
+    for (const [label, path, params] of QUICK) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = label;
+      b.addEventListener('click', () => {
+        $('path').value = path;
+        $('params').value = Object.entries(params).map(([k, v]) => `${k}=${v}`).join('\n');
+        run(path, params);
+      });
+      $('quick').append(b);
+    }
+
+    $('form').addEventListener('submit', e => {
+      e.preventDefault();
+      const params = {};
+      for (const line of $('params').value.split('\n')) {
+        const i = line.indexOf('=');
+        if (i > 0) params[line.slice(0, i).trim()] = line.slice(i + 1).trim();
+      }
+      run($('path').value.trim(), params);
+    });
+
+    $('copy').addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(lastText); $('copy').textContent = 'Copied'; }
+      catch { $('copy').textContent = 'Copy failed'; }
+      setTimeout(() => { $('copy').textContent = 'Copy'; }, 1500);
+    });
+
+    $('download').addEventListener('click', () => {
+      const blob = new Blob([lastText], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = lastName;
+      document.body.append(a);
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    });
+  </script>
+</body>
+</html>

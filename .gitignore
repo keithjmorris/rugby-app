@@ -1,0 +1,9 @@
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+
+# Vercel / Mac / Node
+.vercel
+.DS_Store
+node_modules
