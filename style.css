@@ -72,3 +72,7 @@ body { margin: 0; font-family: var(--font); background: var(--paper); color: var
   border-radius: 8px; padding: 10px; margin: 10px 0 0; max-height: 70vh; overflow: auto; white-space: pre;
 }
 .ex-out:empty { display: none; }
+.ex-matches { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; max-height: 40vh; overflow: auto; }
+.ex-matches:empty { display: none; }
+.ex-matches .ex-meta { flex-basis: 100%; margin: 0 0 2px; }
+.ex-matches button { text-align: left; font-size: 0.78rem; }

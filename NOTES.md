@@ -1,0 +1,50 @@
+# Data notes (from real Highlightly responses)
+
+## Plan
+- 18 Oct 2026: key works on rugby.highlightly.net, plan tier "BASIC" (treat as 100 requests/day).
+
+## League IDs (from /leagues, 108 leagues in total). Always use IDs, never names.
+
+| Competition | ID | Seasons held |
+|---|---|---|
+| Premiership Rugby (England) | 11847 | 2019–2026 |
+| Championship ("Greene King IPA Championship") | 10996 | 2021–2026 |
+| Premiership Rugby Cup | 9294 | 2021–2026 |
+| United Rugby Championship | 65460 | 2020–2026 |
+| Top 14 | 14400 | 2020–2026 |
+| Super Rugby | 61205 | 2021–2026 |
+| European Rugby Champions Cup | 46738 | 2020–2026 |
+| Challenge Cup | 45036 | 2020–2026 |
+| Six Nations | 44185 | 2021–2026 |
+| Six Nations Women | 47589 | 2020–2026 |
+| Six Nations U20 | 48440 | 2021–2026 |
+| Nations Championship | 124179 | 2026 |
+| World Rugby Nations Cup | 125030 | 2026 |
+| Rugby Championship | 73119 | 2020–2025 (no 2026) |
+| Friendly International (men) | 72268 | 2020–2026 |
+| Friendly International Women | 83331 | 2021–2026 |
+| World Cup | 59503 | 2023, 2027 |
+| World Cup Women | 60354 | 2022, 2025 |
+| WXV 1 Women | 120775 | 2023, 2024, 2026 |
+| Premier 15s Women | 13549 | 2020–2025 (no 2026) |
+| Elite 1 Women (France) | 123328 | 2024–2026 |
+| Super W Women | 4188 | 2021–2026 |
+| Super Rugby Aupiki Women | 116520 | 2024–2026 |
+| Lions Tour | 75672 | 2021, 2025 |
+| World Championship U20 | 87586 | 2026 |
+
+Ignore these duplicates: "Premiership Rugby" 5039 (labelled Austria, up to 2024) and
+41632 (labelled Wales, unclear).
+
+## Gaps to raise with Highlightly
+- No player statistics endpoint.
+- Documented match detail has no events timeline, team stats or clock.
+- Standings rows have no bonus-point fields (to be confirmed with real data).
+- Rugby Championship has no 2026 season.
+- Premier 15s Women / Premiership Women's Rugby has no 2026 season.
+- Three leagues named "Premiership Rugby".
+
+## Still to confirm
+- Season numbering: is the northern-hemisphere 2026/27 season "2026" or "2027"?
+- Real shapes of /matches/{id} and /standings.
+- How far ahead fixtures are held.

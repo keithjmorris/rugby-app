@@ -40,6 +40,7 @@
     </div>
     <p id="meta" class="ex-meta">Nothing fetched yet.</p>
     <p id="link" class="ex-meta"></p>
+    <div id="matches" class="ex-matches"></div>
     <pre id="out" class="ex-out"></pre>
   </section>
 
@@ -49,13 +50,16 @@
       return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London' }).format(d);
     };
 
+    // League IDs confirmed from /leagues on 18 Oct 2026. Always use IDs, never names
+    // ("Premiership Rugby" exists three times; the real one is 11847).
     const QUICK = [
-      ['Leagues: Premiership', '/leagues', { leagueName: 'Premiership' }],
-      ['Leagues: Six Nations', '/leagues', { leagueName: 'Six Nations' }],
-      ['Leagues: United Rugby Championship', '/leagues', { leagueName: 'United Rugby Championship' }],
-      ['Leagues: Champions Cup', '/leagues', { leagueName: 'Champions Cup' }],
-      ['Leagues: World Cup', '/leagues', { leagueName: 'World Cup' }],
-      ['Leagues: all (first 100)', '/leagues', {}],
+      ['Premiership matches, season 2026', '/matches', { leagueId: 11847, season: 2026 }],
+      ['Premiership matches, season 2025', '/matches', { leagueId: 11847, season: 2025 }],
+      ['Premiership table, season 2026', '/standings', { leagueId: 11847, season: 2026 }],
+      ['Six Nations 2026 table', '/standings', { leagueId: 44185, season: 2026 }],
+      ['Nations Championship 2026 matches', '/matches', { leagueId: 124179, season: 2026 }],
+      ['Leagues: page 1', '/leagues', {}],
+      ['Leagues: page 2', '/leagues', { offset: 100 }],
       ['Matches: today', '/matches', { date: londonDate(0), timezone: 'Europe/London' }],
       ['Matches: yesterday', '/matches', { date: londonDate(-1), timezone: 'Europe/London' }],
       ['Matches: next Saturday', '/matches', { date: nextSaturday(), timezone: 'Europe/London' }],
@@ -85,13 +89,16 @@
       $('meta').textContent = 'Loading…';
       $('link').innerHTML = '';
       $('out').textContent = '';
+      $('matches').innerHTML = '';
       $('copy').disabled = $('download').disabled = true;
       const started = performance.now();
       try {
         const res = await fetch(url);
         const text = await res.text();
         let pretty = text;
-        try { pretty = JSON.stringify(JSON.parse(text), null, 2); } catch {}
+        let json = null;
+        try { json = JSON.parse(text); pretty = JSON.stringify(json, null, 2); } catch {}
+        showMatchButtons(json, path);
         lastText = pretty;
         lastName = 'rugby' + path.replace(/\//g, '-') + '-' +
           Object.values(params).join('-').replace(/[^A-Za-z0-9-]+/g, '_').slice(0, 60) + '.json';
@@ -111,6 +118,34 @@
       } catch (err) {
         $('meta').textContent = 'Request failed: ' + err.message;
         $('meta').className = 'ex-meta bad';
+      }
+    }
+
+    // When a response is a list of matches, offer one-tap buttons to open each match's detail.
+    function showMatchButtons(json, path) {
+      if (path.replace(/\/+$/, '') !== '/matches') return;
+      const list = Array.isArray(json) ? json : Array.isArray(json && json.data) ? json.data : [];
+      const matches = list.filter(m => m && m.id && m.homeTeam && m.awayTeam);
+      if (!matches.length) return;
+      const box = $('matches');
+      const note = document.createElement('p');
+      note.className = 'ex-meta';
+      note.textContent = `${matches.length} matches. Tap one to fetch its full detail:`;
+      box.append(note);
+      for (const m of matches) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        const when = m.date ? new Date(m.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Europe/London' }) : '';
+        const state = (m.state && m.state.description) || '';
+        const score = (m.state && m.state.score) ? ` ${m.state.score}` : '';
+        b.textContent = `${when} · ${m.homeTeam.name} v ${m.awayTeam.name} · ${state}${score}`;
+        b.addEventListener('click', () => {
+          $('path').value = '/matches/' + m.id;
+          $('params').value = '';
+          run('/matches/' + m.id, {});
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+        box.append(b);
       }
     }
 
