@@ -78,6 +78,8 @@
     cacheSecs: {},           // compId → seconds the proxy said this list is fresh for
     errors: {},              // compId → message
     standings: {},           // `${compId}:${season}` → response or {error}
+    highlights: {},          // compId → [highlight] (newest 40 per competition)
+    matchHighlights: {},     // matchId → [highlight] fetched for the match popup
     tableComp: null,
     followed: store.get('rugby.followedClubs', []), // [{id, name, logo}]
     showOlder: false,
@@ -149,6 +151,67 @@
     state.loadedAt = Date.now();
     render();
     scheduleRefresh();
+    loadHighlights();
+  }
+
+  // ── Highlights ──────────────────────────────────────────────────────────
+  // One request per competition that has results in the Results window; the newest
+  // 40 highlights each. They feed the "Latest highlights" strip and the ▶ markers.
+  async function loadHighlights() {
+    const cutoff = Date.now() - RESULTS_DAYS * DAY;
+    const comps = CFG.competitions.filter(c => (state.matches[c.id] || [])
+      .some(m => phase(m) === 'finished' && kickoff(m) >= cutoff));
+    await Promise.all(comps.map(async c => {
+      try {
+        const { json } = await api('/highlights', { leagueId: c.id, season: state.seasons[c.id], limit: 40 });
+        state.highlights[c.id] = listOf(json);
+      } catch { /* highlights are optional; leave this competition without them */ }
+    }));
+    render();
+  }
+
+  const decode = s => { const t = document.createElement('textarea'); t.innerHTML = String(s || ''); return t.value; };
+  const safeUrl = u => /^https:\/\//i.test(String(u || '')) ? u : '';
+
+  // Full match highlights first, then other clips; newest first within each.
+  function sortHighlights(list) {
+    return list.slice().sort((a, b) =>
+      (a.category === 'match-highlights' ? 0 : 1) - (b.category === 'match-highlights' ? 0 : 1) || (b.id || 0) - (a.id || 0));
+  }
+  function highlightsForMatch(id) {
+    if (state.matchHighlights[id]) return state.matchHighlights[id];
+    const all = Object.values(state.highlights).flat().filter(h => h.match && String(h.match.id) === String(id));
+    return all.length ? all : null;
+  }
+  const hasHighlights = id => !!(highlightsForMatch(id) || []).length;
+
+  function highlightCard(h) {
+    const url = safeUrl(h.url);
+    if (!url) return '';
+    const when = h.match && h.match.date ? fDayShort.format(new Date(h.match.date)) : '';
+    const meta = [decode(h.channel), when].filter(Boolean).join(' · ');
+    const img = safeUrl(h.imgUrl);
+    return `<a class="hl" href="${esc(url)}" target="_blank" rel="noopener">
+      <span class="hl-thumb">${img ? `<img src="${esc(img)}" alt="" loading="lazy">` : ''}<i class="hl-play" aria-hidden="true"></i></span>
+      <span class="hl-title">${esc(decode(h.title))}</span>
+      ${meta ? `<span class="hl-meta">${esc(meta)}</span>` : ''}
+    </a>`;
+  }
+
+  function highlightStrip() {
+    const items = [];
+    for (const c of CFG.competitions) {
+      for (const h of state.highlights[c.id] || []) {
+        if (!h.match || !h.match.homeTeam || !h.match.awayTeam) continue;
+        if (passesFilter({ ...h.match, _comp: c })) items.push(h);
+      }
+    }
+    if (!items.length) return '';
+    items.sort((a, b) => (Date.parse(b.match.date) || 0) - (Date.parse(a.match.date) || 0) || (b.id || 0) - (a.id || 0));
+    return `<section class="day hl-strip">
+      <h2 class="day-title">Latest highlights</h2>
+      <div class="hl-row">${items.slice(0, 12).map(highlightCard).join('')}</div>
+    </section>`;
   }
 
   // ── Live refresh ────────────────────────────────────────────────────────
@@ -255,6 +318,7 @@
   // Broken logo → initials badge (error events don't bubble, so listen in the capture phase).
   document.addEventListener('error', e => {
     const img = e.target;
+    if (img instanceof HTMLImageElement && img.closest('.hl-thumb')) { img.remove(); return; }
     if (!(img instanceof HTMLImageElement) || !img.dataset.fallback) return;
     const span = document.createElement('span');
     span.className = img.className + ' crest-fallback';
@@ -282,6 +346,7 @@
     else if (overdue) right = `<span class="tag">Awaiting update</span>`;
     else if (tag) right = `<span class="tag tag-${ph}">${esc(tag)}</span>`;
     else right = `<span class="when">${ph === 'upcoming' ? time : 'FT'}</span>`;
+    if (ph === 'finished' && hasHighlights(m.id)) right = `<span class="hl-mark" title="Highlights available">▶ Video</span>${right}`;
 
     const row = (team, pts, win) => `
       <div class="team-row${win ? ' win' : ''}${isTracked(team, m._comp) ? ' tracked' : ''}">
@@ -291,7 +356,7 @@
       </div>`;
     return `
       <button type="button" class="match match-${ph}" data-match="${m.id}">
-        <div class="match-meta"><span class="comp">${compLabel(m)}</span>${right}</div>
+        <div class="match-meta"><span class="comp">${compLabel(m)}</span><span class="meta-right">${right}</span></div>
         ${row(m.homeTeam || {}, showScore ? score[0] : '', hw)}
         ${row(m.awayTeam || {}, showScore ? score[1] : '', aw)}
       </button>`;
@@ -368,7 +433,8 @@
     const cutoff = Date.now() - RESULTS_DAYS * DAY;
     const recent = state.showOlder ? list : list.filter(m => kickoff(m) >= cutoff);
     const hidden = list.length - recent.length;
-    let html = recent.length ? dayBlocks(recent) : emptyMsg(`No results ${filterDescription()} in the last ${RESULTS_DAYS} days.`);
+    let html = highlightStrip();
+    html += recent.length ? dayBlocks(recent) : emptyMsg(`No results ${filterDescription()} in the last ${RESULTS_DAYS} days.`);
     if (hidden > 0) html += `<button type="button" class="more-btn" data-action="older">Show ${hidden} earlier result${hidden === 1 ? '' : 's'}</button>`;
     return html;
   }
@@ -580,9 +646,17 @@
         <div class="sb-score">${showScore ? `${score[0]}<i>–</i>${score[1]}` : '<small>v</small>'}</div>
         <div class="sb-team">${crest(m.awayTeam, 'lg')}<span>${esc(m.awayTeam.name)}</span></div>
       </div>
+      ${matchHighlightsHtml(m)}
       ${forms ? `<section class="detail-block"><h3>Recent form <small>(this season, newest first)</small></h3>${forms}</section>` : ''}
       ${detailHtml}
       <section class="detail-block" id="h2hBlock">${extra || `<button type="button" class="more-btn" data-action="h2h" data-match="${m.id}">Show head-to-head</button>`}</section>`;
+  }
+
+  function matchHighlightsHtml(m) {
+    const list = highlightsForMatch(m.id);
+    if (!list || !list.length) return '';
+    return `<section class="detail-block"><h3>Highlights</h3>
+      <div class="hl-grid">${sortHighlights(list).map(highlightCard).join('')}</div></section>`;
   }
 
   async function openMatch(id) {
@@ -590,14 +664,26 @@
     if (!m) return;
     openOverlay('matchOverlay');
     renderMatchSheet(m, 'loading');
+    // Finished match not covered by the competition lists: ask for its highlights directly.
+    if (phase(m) === 'finished' && !highlightsForMatch(m.id)) {
+      api('/highlights', { matchId: m.id }).then(({ json }) => {
+        state.matchHighlights[m.id] = listOf(json);
+        if (state.matchHighlights[m.id].length && !$('matchOverlay').hidden &&
+          $('matchBody').querySelector(`[data-match="${m.id}"]`) && lastDetail[m.id]) {
+          renderMatchSheet(m, lastDetail[m.id]);
+        }
+      }).catch(() => {});
+    }
     let detail;
     try {
       const { json } = await api('/matches/' + m.id);
       detail = Array.isArray(json) ? json[0] : json; // Highlightly returns an array of one
       if (!detail) detail = { error: 'No detail returned' };
     } catch (e) { detail = { error: e.message }; }
+    lastDetail[m.id] = detail;
     if (!$('matchOverlay').hidden && $('matchBody').querySelector(`[data-match="${m.id}"]`)) renderMatchSheet(m, detail);
   }
+  const lastDetail = {};
 
   async function loadH2H(id) {
     const m = findMatch(id);

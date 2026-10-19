@@ -36,7 +36,22 @@
 Ignore these duplicates: "Premiership Rugby" 5039 (labelled Austria, up to 2024) and
 41632 (labelled Wales, unclear).
 
+## Confirmed from /highlights?leagueId=11847&season=2026 (19 Oct 2026, All Sports PRO)
+- `{data, plan, pagination}`; newest first; limit max 40.
+- Items: id, type ("VERIFIED"), imgUrl (YouTube thumbnail), title, description (null), url (YouTube watch),
+  embedUrl, channel, source ("youtube"), category ("match-highlights"), match (full match object).
+- 9 highlights for 15 finished matches; some matches have two (TNT Sports + club channel).
+- `channel` can contain HTML entities ("&amp;"), so decode before display.
+- Data error: highlight 12377 ("Bath v Northampton Champions Cup 2025/26") is attached to the
+  Premiership Round 3 match 46844930 (Northampton v Bath, Oct 2026). Shown as supplied; reported, not filtered.
+
+## Line-ups
+- Highlightly (19 Oct 2026): line-ups, venue, referee, forecast and predictions are only populated for
+  "certain leagues and matches". None seen so far for the Premiership.
+
 ## Gaps to raise with Highlightly
+- Highlight 12377 is attached to the wrong match (see above).
+- Which leagues actually carry line-ups?
 - No player statistics endpoint.
 - Documented match detail has no events timeline, team stats or clock.
 - Standings rows have no bonus-point fields (to be confirmed with real data).
