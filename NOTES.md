@@ -46,8 +46,16 @@ Ignore these duplicates: "Premiership Rugby" 5039 (labelled Austria, up to 2024)
   Premiership Round 3 match 46844930 (Northampton v Bath, Oct 2026). Shown as supplied; reported, not filtered.
 
 ## Line-ups
-- Highlightly (19 Oct 2026): line-ups, venue, referee, forecast and predictions are only populated for
-  "certain leagues and matches". None seen so far for the Premiership.
+- Highlightly (19 Oct 2026, evening): rugby line-up ingestion broke in a service migration at the start of
+  June 2026 and has not run since. Engineers are restoring it. Held: Premiership 2025 (2025/26) 84 matches,
+  Six Nations 2026 14 of 15, Rugby Championship 2025 12 of 12. Nothing for 2026/27, autumn internationals
+  or the Nations Championship until it is fixed. The app shows them automatically once they exist.
+- Confirmed from /matches/42119327 (France v England, Six Nations 2026):
+  `lineups.home|away.initialLineup[]` (15) and `.substitutions[]` (the 8 replacements), each with name,
+  shortName, shirtNumber, position ("Forward"/"Back"), countryName, birth, height.
+  venue{name, city, country, capacity}, referee{name: "Surname, First", nationality},
+  forecast{status, temperature}, predictions{prematch[], live[]}.
+- England men's team id 329270, named plain "England".
 
 ## Gaps to raise with Highlightly
 - Highlight 12377 is attached to the wrong match (see above).

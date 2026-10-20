@@ -582,7 +582,9 @@
 
   function predictionHtml(pred, m) {
     const pick = arr => (arr || []).slice().sort((a, b) => Date.parse(a.generatedAt) - Date.parse(b.generatedAt)).pop();
-    const p = pick(pred && pred.live) || pick(pred && pred.prematch);
+    // Live predictions only while the match is in progress; once it's over (or before it starts)
+    // the pre-match prediction is the meaningful one.
+    const p = (phase(m) === 'live' && pick(pred && pred.live)) || pick(pred && pred.prematch);
     if (!p || !p.probabilities) return '';
     const n = v => Math.max(0, parseFloat(String(v).replace('%', '')) || 0);
     const h = n(p.probabilities.home), d = n(p.probabilities.draw), a = n(p.probabilities.away);
@@ -610,7 +612,12 @@
   function factsHtml(d) {
     const facts = [];
     if (d.venue && d.venue.name) facts.push(['Venue', [d.venue.name, d.venue.city].filter(Boolean).join(', ')]);
-    if (d.referee && d.referee.name) facts.push(['Referee', d.referee.name + (d.referee.nationality ? ` (${d.referee.nationality})` : '')]);
+    if (d.referee && d.referee.name) {
+      // Highlightly gives "Surname, First name"; show it the usual way round.
+      const parts = String(d.referee.name).split(',').map(x => x.trim()).filter(Boolean);
+      const name = parts.length === 2 ? `${parts[1]} ${parts[0]}` : d.referee.name;
+      facts.push(['Referee', name + (d.referee.nationality ? ` (${d.referee.nationality})` : '')]);
+    }
     if (d.forecast && d.forecast.status) facts.push(['Weather', [d.forecast.status, d.forecast.temperature].filter(Boolean).join(', ')]);
     if (!facts.length) return '';
     return `<section class="detail-block"><dl class="facts">${facts.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl></section>`;
