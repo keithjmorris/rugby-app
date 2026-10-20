@@ -582,8 +582,9 @@
 
   function predictionHtml(pred, m) {
     const pick = arr => (arr || []).slice().sort((a, b) => Date.parse(a.generatedAt) - Date.parse(b.generatedAt)).pop();
-    // Live predictions only while the match is in progress; once it's over (or before it starts)
-    // the pre-match prediction is the meaningful one.
+    // Predictions are Highlightly's model output. Shown only before and during a match;
+    // once it's over the result makes them redundant.
+    if (phase(m) !== 'upcoming' && phase(m) !== 'live') return '';
     const p = (phase(m) === 'live' && pick(pred && pred.live)) || pick(pred && pred.prematch);
     if (!p || !p.probabilities) return '';
     const n = v => Math.max(0, parseFloat(String(v).replace('%', '')) || 0);
